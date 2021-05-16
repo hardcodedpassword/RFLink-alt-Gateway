@@ -3,6 +3,7 @@ import serial
 import logging
 import signal
 from datetime import datetime
+import re
 
 
 class Gateway:
@@ -13,7 +14,6 @@ class Gateway:
     def __init__(self, com_port: str):
         self.com_port = com_port
         self.serial_port = None
-        logging.basicConfig(level=logging.INFO)
         logging.info("Initializing RFLink-alt-gateway")
 
         # set-up the basic device administration
@@ -58,9 +58,10 @@ class Gateway:
         if message[0] == "r":
             now = datetime.now()
             try:
-                pulses = [int(s) for s in message.split(',')[1:]]
+                m = re.split(":|,",message)[2:]
+                pulses = [int(s) for s in m]
                 for d in self.device_types:
-                    if d.parse(now, pulses[1:]):
+                    if d.parse(now, pulses):
                         # message has been handled
                         # Note that the unknown device should always be at the end of this list
                         break

@@ -35,7 +35,7 @@ class UnknownDeviceInstance(DeviceInstance):
 
 class UnknownDeviceType(DeviceType):
     def __init__(self):
-        DeviceType.__init__(self, 0)
+        DeviceType.__init__(self, "Unknown")
         self.instances.append(UnknownDeviceInstance())
 
     def add_instance(self):
