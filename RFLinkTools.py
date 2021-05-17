@@ -17,11 +17,14 @@ def bits_to_bytes(bits):
     return bytes_
 
 
-# converts pulse  string into an integer array
+# converts pulse string into an integer array
 # "100,100,200,100" -> [100,100,200,100]
 def string_to_pulses(pulse_string: str):
     return list(map(int, pulse_string.split(',')))
 
+
+def pulses_to_string(pulses):
+    return ','.join([str(p) for p in pulses])
 
 # encodes a bitstring into pulses suitable for RFLink-alt
 # The preamble (integer array) is required because it is

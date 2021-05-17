@@ -9,14 +9,22 @@ class DeviceInstance:
     def parse(self, timestamp, pulses):
         return False
 
+    def get_id(self):
+        return self.id
 
 class DeviceType:
     def __init__(self, type_name):
         self.type_name = type_name
         self.instances = []
 
-    def add_instance(self):
-        self.instances.append(DeviceInstance())
+    def add_instance(self, instance):
+        self.instances.append(instance)
+
+    def get_instance(self, instance_id):
+        for i in self.instances:
+            if i.get_id() == instance_id:
+                return i
+        return None
 
     def parse(self, timestamp, pulses):
         return False
@@ -39,7 +47,7 @@ class UnknownDeviceType(DeviceType):
         self.instances.append(UnknownDeviceInstance())
 
     def add_instance(self):
-        raise Exception("should not be used called")
+        raise Exception("should not be used")
 
     def parse(self, timestamp, pulses):
         return self.instances[0].parse(timestamp, pulses)

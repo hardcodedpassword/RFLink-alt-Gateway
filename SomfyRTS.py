@@ -35,20 +35,62 @@ import logging
 
 
 class BlindButtons(Enum):
+    none = 0x00
     stop = 0x01
     up = 0x02
     down = 0x04
     prog = 0x08
 
 
+class SomfyRemoteInstance(DeviceInstance):
+    def __init__(self, code, remote):
+        self.code = code
+        self.remote = remote
+        self.last_button = BlindButtons.none
+        DeviceInstance.__init__(self, str(remote))
+
+    def __preamble(self):
+        preamble = []
+
+        # hardware sync
+        for i in range(0, 4):
+            preamble.append(4 * SomfyRemoteType.pulse_time)
+
+        # soft sync
+        preamble.append(7 * SomfyRemoteType.pulse_time)
+        preamble.append(1 * SomfyRemoteType.pulse_time)
+
+        return preamble
+
+    def __get_pulses(self, button: BlindButtons):
+        self.code += 1
+        cmd = RtsCommand()
+        cmd.encode(button, self.code, self.remote)
+        bits = RFLinkTools.bytes_to_bits(cmd.data)
+        pulses = RFLinkTools.encode_manchester(bits, 64, self.__preamble())
+        return [1,1] + pulses
+
+    def handle(self, command):
+        self.code = command.code
+        self.last_button = BlindButtons(command.button)
+
+    def stop(self):
+        return self.__get_pulses(BlindButtons.stop)
+
+    def up(self):
+        return self.__get_pulses(BlindButtons.up)
+
+    def down(self):
+        return self.__get_pulses(BlindButtons.down)
+
+    def prog(self):
+        return self.__get_pulses(BlindButtons.prog)
+
+
 class SomfyRemoteType(DeviceType):
-    code = 0
-    remote = 0
     pulse_time = 64  # 64 * 10us = 640 us
 
     def __init__(self, code=0, remote=0):
-        self.code = code
-        self.remote = remote
         DeviceType.__init__(self, "SomfyRTS")
 
     def parse(self, timestamp, pulses):
@@ -59,46 +101,17 @@ class SomfyRemoteType(DeviceType):
                 bytes = RFLinkTools.bits_to_bytes(bits)
                 cmd = RtsCommand()
                 cmd.decode(bytes)
-                logging.info("Somfy RTS: remote:{remote} code:{code} button:{button}".format(remote=cmd.remote, code=cmd.code, button=cmd.button))
-                #if cmd.remote == self.remote:
-                #    return True
+                is_handled = False
+                for i in self.instances:
+                    if i.get_id() == str(cmd.remote):
+                        i.handle(cmd)
+                        is_handled = True
+                if not is_handled:
+                     logging.info("Somfy RTS (unknown remote): remote:{remote} code:{code} button:{button}".format(remote=cmd.remote,
+                                                                                                 code=cmd.code,
+                                                                                                 button=cmd.button))
                 return True
         return False
-
-    def send_command(self, button: BlindButtons):
-        cmd = RtsCommand()
-        cmd.encode(button, self.code, self.remote)
-        bits = RFLinkTools.bytes_to_bits(cmd.data)
-        pulses = RFLinkTools.encode_manchester(bits, 64, self.preamble())
-        self.send(pulses)
-
-        if not self.try_parse(pulses):
-            print("Not OK")
-
-    def stop(self):
-        self.send_command(BlindButtons.stop)
-
-    def up(self):
-        self.send_command(BlindButtons.up)
-
-    def down(self):
-        self.send_command(BlindButtons.down)
-
-    def prog(self):
-        self.send_command(BlindButtons.prog)
-
-    def preamble(self):
-        preamble = []
-
-        # hardware sync
-        for i in range(0, 4):
-            preamble.append(4 * self.pulse_time)
-
-        # soft sync
-        preamble.append(7 * self.pulse_time)
-        preamble.append(1 * self.pulse_time)
-
-        return preamble
 
 
 class RtsCommand:
@@ -120,38 +133,38 @@ class RtsCommand:
         self.data[5] = (remote >> 8) & 0xff
         self.data[6] = remote & 0xff
 
-        checksum = self.checksum()
+        checksum = self.__checksum()
         self.data[1] = self.data[1] | checksum
-        self.obfuscate()
+        self.__obfuscate()
 
     def decode(self, data: bytearray):
         if len(data) != 7:
             raise Exception("invalid data length")
 
         self.data = data.copy()
-        self.decipher()
+        self.__decipher()
 
         crc = self.data[1] & 0x0f
         self.data[1] &= 0xf0
-        if crc != self.checksum():
+        if crc != self.__checksum():
             raise Exception("invalid checksum")
 
         self.button = self.data[1] >> 4
         self.code = (self.data[2] << 8) | self.data[3]
         self.remote = (self.data[4] << 16) | (self.data[5] << 8) | self.data[6]
 
-    def checksum(self) -> int:
+    def __checksum(self) -> int:
         checksum = 0
         for byte in self.data:
             checksum = checksum ^ byte ^ (byte >> 4)
         checksum = checksum & 0x0F
         return checksum
 
-    def obfuscate(self):
+    def __obfuscate(self):
         for i in range(1, 7):
             self.data[i] = self.data[i] ^ self.data[i - 1]
 
-    def decipher(self):
+    def __decipher(self):
         data = [self.data[0], 0, 0, 0, 0, 0, 0]
         for i in range(1, 7):
             data[i] = self.data[i] ^ self.data[i - 1]

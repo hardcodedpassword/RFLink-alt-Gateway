@@ -4,32 +4,27 @@ import logging
 import signal
 from datetime import datetime
 import re
+import RFLinkTools
 
 
 class Gateway:
-    def signal_handler(self, frame):  # TODO - not sure if this is correct
+    def __signal_handler(self, frame):  # TODO - not sure if this is correct
         logging.info("Gateway exiting gracefully")
         self.running = False
 
-    def __init__(self, com_port: str):
-        self.com_port = com_port
+    def __init__(self):
         self.serial_port = None
-        logging.info("Initializing RFLink-alt-gateway")
-
         # set-up the basic device administration
         self.device_types = []
-
-        signal.signal(signal.SIGINT, self.signal_handler)
-        logging.info("Opening COM port " + self.com_port)
-        self.serial_port = serial.Serial(self.com_port, 57600, timeout=0.1)
         self.running = True
+        signal.signal(signal.SIGINT, self.__signal_handler)
 
     def add_device_type(self, device_type):
         self.device_types.append(device_type)
 
     def get_device_type(self, device_type_name):
         for dt in self.device_types:
-            if dt.name == device_type_name:
+            if dt.type_name == device_type_name:
                 return dt
         return None
 
@@ -38,23 +33,35 @@ class Gateway:
             logging.debug("Closing COM port: " + self.com_port)
             self.serial_port.close()
 
-    def run(self):
+    def step(self, message):
+        data = self.serial_port.readline()
+        if len(data) > 0:
+            message += data.decode("utf-8")
+            eol = message[-1]
+            if eol == '\n':
+                # complete message: share with devices
+                logging.debug('recv: ' + message)
+                self.__handle_message(message)
+                message = ''
+        return message
+
+    def run(self, com_port: str):
+        logging.info("Opening COM port " + com_port)
+        self.serial_port = serial.Serial(com_port, 57600, timeout=0.1)
+
         message = ''
         while self.running:
-            data = self.serial_port.readline()
-            if len(data) > 0:
-                message += data.decode("utf-8")
-                eol = message[-1]
-                if eol == '\n':
-                    # complete message: share with devices
-                    logging.debug('recv: ' + message)
-                    self.handle_message(message)
-                    message = ''
+            self.step(message)
 
         self.serial_port.close()
         logging.debug("Serial comms thread done")
 
-    def handle_message(self, message):
+    def send(self, pulses):
+        p_str = 't:' + RFLinkTools.pulses_to_string(pulses) + '\n'
+        logging.info('Sending command: ' + p_str)
+        self.serial_port.write(p_str.encode('utf-8'))
+
+    def __handle_message(self, message):
         if message[0] == "r":
             now = datetime.now()
             try:
