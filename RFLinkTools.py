@@ -102,3 +102,31 @@ def decode_manchester(pulses, pulse_time: int, last_bit: int = 0):
             raise Exception("Invalid encoding")
 
     return bits
+
+
+def encode_two_state(bits, pulse_time, bit_encoding):
+    pulses = []
+    for b in bits:
+        p = bit_encoding[b]
+        pulses.append(p[0]*pulse_time)
+        pulses.append(p[1]*pulse_time)
+    return pulses
+
+
+def decode_two_state(pulses, pulse_time, bit_encoding, tolerance):
+    bits = ''
+    if len(pulses) % 2 > 0:
+        raise Exception("Invalid encoding")
+
+    for p in range(0, len(pulses), 2):
+        for b in bit_encoding:
+            if (bit_encoding[b][0] * pulse_time * (1.0-tolerance)) <= pulses[p] <=\
+                    (bit_encoding[b][1] * pulse_time * (1.0 + tolerance)):
+                if (bit_encoding[b][0] * pulse_time * (1.0 - tolerance)) <= pulses[p] \
+                        <= (bit_encoding[b][1] * pulse_time * (1.0 + tolerance)):
+                    bits += b
+
+    if len(bits) != len(pulses) / 2:
+        raise Exception("Invalid encoding")
+    return bits
+

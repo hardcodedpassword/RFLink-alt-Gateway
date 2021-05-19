@@ -1,11 +1,11 @@
 from Gateway import Gateway
 from Device import UnknownDeviceType
 from SomfyRTS import SomfyRemoteType, SomfyRemoteInstance
+from RA20RF import RA20RFType
 import logging
 from flask import Flask
 import threading
-import time
-import sys
+
 
 logging.getLogger().setLevel(logging.DEBUG)
 gateway = Gateway()  #
@@ -39,6 +39,9 @@ if __name__ == '__main__':
     remote = SomfyRemoteInstance(1, 1003001)
     somfy.add_instance(remote)
     gateway.add_device_type(somfy)
+
+    gateway.add_device_type(RA20RFType())
+
     gateway.add_device_type(UnknownDeviceType())
 
     threading.Thread(target=thread_runner).start()

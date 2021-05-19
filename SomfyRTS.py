@@ -70,9 +70,12 @@ class SomfyRemoteInstance(DeviceInstance):
         pulses = RFLinkTools.encode_manchester(bits, 64, self.__preamble())
         return [1,1] + pulses
 
-    def handle(self, command):
-        self.code = command.code
-        self.last_button = BlindButtons(command.button)
+    def handle(self, cmd):
+        self.code = cmd.code
+        self.last_button = BlindButtons(cmd.button)
+        logging.info("Somfy RTS: remote:{remote} code:{code} button:{button}".format(remote=cmd.remote,
+                                                                                     code=cmd.code,
+                                                                                     button=cmd.button))
 
     def stop(self):
         return self.__get_pulses(BlindButtons.stop)
@@ -90,7 +93,7 @@ class SomfyRemoteInstance(DeviceInstance):
 class SomfyRemoteType(DeviceType):
     pulse_time = 64  # 64 * 10us = 640 us
 
-    def __init__(self, code=0, remote=0):
+    def __init__(self):
         DeviceType.__init__(self, "SomfyRTS")
 
     def parse(self, timestamp, pulses):
