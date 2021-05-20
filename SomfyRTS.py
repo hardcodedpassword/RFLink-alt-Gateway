@@ -47,7 +47,7 @@ class SomfyRemoteInstance(DeviceInstance):
         self.code = code
         self.remote = remote
         self.last_button = BlindButtons.none
-        DeviceInstance.__init__(self, str(remote))
+        DeviceInstance.__init__(self, str(remote), ['up', 'down', 'stop', 'prog'])
 
     def __preamble(self):
         preamble = []
@@ -68,7 +68,7 @@ class SomfyRemoteInstance(DeviceInstance):
         cmd.encode(button, self.code, self.remote)
         bits = RFLinkTools.bytes_to_bits(cmd.data)
         pulses = RFLinkTools.encode_manchester(bits, 64, self.__preamble())
-        return [1,1] + pulses
+        return [1, 1] + pulses
 
     def handle(self, cmd):
         self.code = cmd.code
@@ -99,7 +99,7 @@ class SomfyRemoteType(DeviceType):
     def parse(self, timestamp, pulses):
         if 8704 * 0.85 <= sum(pulses) <= 8704 * 1.15:
             # could be an RTS message, continue from here
-            if 24*self.pulse_time*0.85 <= sum(pulses[0:5]) <= 24*self.pulse_time*1.15:
+            if 24 * self.pulse_time * 0.85 <= sum(pulses[0:5]) <= 24 * self.pulse_time * 1.15:
                 bits = RFLinkTools.decode_manchester(pulses[5:], 64, 1)
                 bytes = RFLinkTools.bits_to_bytes(bits)
                 cmd = RtsCommand()
@@ -110,9 +110,10 @@ class SomfyRemoteType(DeviceType):
                         i.handle(cmd)
                         is_handled = True
                 if not is_handled:
-                     logging.info("Somfy RTS (unknown remote): remote:{remote} code:{code} button:{button}".format(remote=cmd.remote,
-                                                                                                 code=cmd.code,
-                                                                                                 button=cmd.button))
+                    logging.info("Somfy RTS (unknown remote): remote:{remote} code:{code} button:{button}".format(
+                        remote=cmd.remote,
+                        code=cmd.code,
+                        button=cmd.button))
                 return True
         return False
 

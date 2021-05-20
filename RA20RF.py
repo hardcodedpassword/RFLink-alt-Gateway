@@ -18,7 +18,7 @@ import logging
 class RA20RFInstance(DeviceInstance):
     def __init__(self, device_id: int):
         self.device_id = [device_id>>16 & 0xff, device_id>>8 & 0xff, device_id>>0 & 0xff]
-        DeviceInstance.__init__(self, str(device_id))
+        DeviceInstance.__init__(self, str(device_id), ['alarm'])
 
     def handle(self):
         logging.info("RA20RF: ALARM device id: {id}".format(self.device_id))
