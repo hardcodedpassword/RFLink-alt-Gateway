@@ -1,4 +1,3 @@
-from Device import UnknownDeviceType
 import serial
 import logging
 import signal
@@ -30,7 +29,7 @@ class Gateway:
 
     def __del__(self):
         if not(self.serial_port is None):
-            logging.debug("Closing COM port: " + self.com_port)
+            logging.debug("Closing COM port: " + self.serial_port)
             self.serial_port.close()
 
     def step(self, message):
@@ -65,12 +64,12 @@ class Gateway:
         if message[0] == "r":
             now = datetime.now()
             try:
-                m = re.split(":|,",message)[2:]
+                m = re.split('[:,]', message)[2:]
                 pulses = [int(s) for s in m]
                 for d in self.device_types:
                     if d.parse(now, pulses):
                         # message has been handled
                         # Note that the unknown device should always be at the end of this list
                         break
-            except:
+            except Exception as e:
                 logging.debug("Invalid message")

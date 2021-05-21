@@ -1,8 +1,9 @@
 import logging
 
 
+# base class for all device instances
 class DeviceInstance:
-    def __init__(self, id, commands):
+    def __init__(self, id: str, commands: []):
         self.id = id
         self.commands = commands
 
@@ -27,6 +28,7 @@ class DeviceInstance:
         else:
             raise Exception('no such command')
 
+# base class for all device types
 class DeviceType:
     def __init__(self, type_name):
         self.type_name = type_name
@@ -45,24 +47,16 @@ class DeviceType:
         return False
 
 
-class UnknownDeviceInstance(DeviceInstance):
+# this class handles all unknown messages
+class UnknownDeviceType(DeviceType):
     def __init__(self):
-        DeviceInstance.__init__(self, 'Unknown device handler', [''])
+        DeviceType.__init__(self, "Unknown")
+
+    def add_instance(self):
+        raise Exception("should not be used")
 
     def parse(self, timestamp, pulses):
         s = ",".join([str(i) for i in pulses])
         msg = "{dt} Unknown: {msg}".format(dt=timestamp, msg=s)
         logging.info(msg)
         return True
-
-
-class UnknownDeviceType(DeviceType):
-    def __init__(self):
-        DeviceType.__init__(self, "Unknown")
-        self.instances.append(UnknownDeviceInstance())
-
-    def add_instance(self):
-        raise Exception("should not be used")
-
-    def parse(self, timestamp, pulses):
-        return self.instances[0].parse(timestamp, pulses)

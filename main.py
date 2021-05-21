@@ -3,8 +3,9 @@ from Device import UnknownDeviceType
 from SomfyRTS import SomfyRemoteType, SomfyRemoteInstance
 from RA20RF import RA20RFType
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 import threading
+import argparse
 
 logging.getLogger().setLevel(logging.DEBUG)
 gateway = Gateway()
@@ -92,22 +93,31 @@ def get_device_commands(device_type, device_id):
         return jsonify(result=False, error=str(e))
 
 
-def thread_runner():
-    logging.debug('Flask started')
-    app.run()
+def thread_runner(host, port):
+    app.run(host=host, port=port)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
+    parser = argparse.ArgumentParser(description='RFLink-alt-Gateway')
+    parser.add_argument('serialport', help='serial port')
+    parser.add_argument('host', help='interface to use')
+    parser.add_argument('port', type=int, help='port to listen to')
+    args = parser.parse_args()
+
+    # Setup two somfy screens
     somfy = SomfyRemoteType()
-    remote = SomfyRemoteInstance(1, 1003001)
-    somfy.add_instance(remote)
+    remote1 = SomfyRemoteInstance(code=0x09B8, remote=0x0F0101)
+    remote2 = SomfyRemoteInstance(code=0x099C, remote=0x0F0102)
+    somfy.add_instance(remote1)
+    somfy.add_instance(remote2)
     gateway.add_device_type(somfy)
 
+    # Flamingo smoke alarm
     gateway.add_device_type(RA20RFType())
     gateway.add_device_type(UnknownDeviceType())
 
-    threading.Thread(target=thread_runner).start()
-    logging.debug('Gateway started')
-    gateway.run(com_port="/dev/cu.usbmodem14101")
+    threading.Thread(target=thread_runner, args=(args.host, args.port,)).start()
+    logging.debug('Starting Gateway at {serialport}'.format(serialport=args.serialport))
+    gateway.run(com_port=args.serialport)
