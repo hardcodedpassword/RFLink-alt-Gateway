@@ -32,7 +32,7 @@ def command(device_type, device_id, command):
         gateway.send(pulses)
         return jsonify(result=True, error='')
     except Exception as e:
-        logging.info('command execution failed' + str(e))
+        logging.error('command execution failed' + str(e))
         return jsonify(result=False, error=str(e))
 
 
@@ -46,7 +46,7 @@ def get_devices():
                 devices[device_type.type_name].append(device_instance.id)
         return jsonify(result=True, error='', devices=devices)
     except Exception as e:
-        logging.info('could not get devices' + str(e))
+        logging.error('could not get devices' + str(e))
         return jsonify(result=False, error=str(e))
 
 @app.route('/device_types', methods=['GET'])
@@ -55,19 +55,16 @@ def get_device_types():
         types = [t.type_name for t in gateway.device_types]
         return jsonify(result=True, error='', device_types=types)
     except Exception as e:
-        logging.info('Error getting device types' + str(e))
+        logging.error('Error getting device types' + str(e))
         return jsonify(result=False, error=str(e))
 
 @app.route('/add_device_type/<device_module>/<device_type>', methods=['GET'])
 def add_device_types(device_module, device_type):
     try:
-        device_type_module = __import__(device_module)
-        device_type_class = getattr(device_type_module, device_type)
-        device_type_instance = device_type_class()
-        gateway.add_device_type(device_type_instance)
+        gateway.add_device_type(device_module, device_type)
         return jsonify(result=True, error='')
     except Exception as e:
-        logging.info('Adding device type failed' + str(e))
+        logging.error('Adding device type failed' + str(e))
         return jsonify(result=False, error=str(e))
 
 
@@ -80,7 +77,7 @@ def get_device_instances(device_type):
         instances = [i.id for i in dt.instances]
         return jsonify(result=True, error='', instances=instances)
     except Exception as e:
-        logging.info('listing device instances failed' + str(e))
+        logging.error('listing device instances failed' + str(e))
         return jsonify(result=False, error=str(e))
 
 
@@ -95,7 +92,7 @@ def get_device_state(device_type, device_id):
             raise Exception('no such device instance')
         return jsonify(result=True, error='', state=di.get_state())
     except Exception as e:
-        logging.info('getting device state failed' + str(e))
+        logging.error('getting device state failed' + str(e))
         return jsonify(result=False, error=str(e))
 
 
@@ -111,7 +108,7 @@ def get_device_commands(device_type, device_id):
             raise Exception('no such device instance')
         return jsonify(result=True, error='', state=di.get_commands())
     except Exception as e:
-        logging.info('getting device commands failed' + str(e))
+        logging.error('getting device commands failed' + str(e))
         return jsonify(result=False, error=str(e))
 
 
@@ -129,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('database', help='database file')
     args = parser.parse_args()
 
-    gateway.load(args.database)
+    #gateway.load(args.database)
     # Setup two somfy screens
     # somfy = SomfyRemoteType()
     # somfy.add_instance(SomfyRemoteInstance(code=0x09B8, remote=0x0F0101))

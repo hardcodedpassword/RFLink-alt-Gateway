@@ -4,7 +4,8 @@ import signal
 from datetime import datetime
 import re
 import RFLinkTools
-import pickle
+from tinydb import TinyDB
+from Device import UnknownDeviceType
 
 
 class Gateway:
@@ -14,16 +15,39 @@ class Gateway:
 
     def __init__(self):
         self.serial_port = None
-        # set-up the basic device administration
-        self.device_types = []
+
         self.running = True
+
         self.filename = './gateway.db'
+        self.db = TinyDB(self.filename)
+        self.device_type_table = self.db.table('device_type')
+
+        # set-up the basic device administration
+        self.device_types = [UnknownDeviceType()]
+
+        for dt in self.device_type_table.all():
+            self._add_device_type_instance(device_module=dt.device_module, device_type=dt.device_type)
+
         signal.signal(signal.SIGINT, self.__signal_handler)
 
-    def add_device_type(self, device_type):
-        i = max(len(self.device_types)-1,0)
-        # the unknown device type should always be the last
-        self.device_types.insert(i, device_type)
+    def _add_device_type_instance(self, device_module, device_type):
+        matches = [dt for dt in self.device_types if type(dt).__name__ == device_type]
+
+        if len(matches) == 0:
+            device_type_module = __import__(device_module)
+            device_type_class = getattr(device_type_module, device_type)
+            device_type_instance = device_type_class()
+            # the unknown device type should always be the last
+            i = max(len(self.device_types) - 1, 0)
+            self.device_types.insert(i, device_type_instance)
+            logging.info('Added device type {module}.{type}, id={id}'.format(module=device_module, type=device_type, id=i))
+            return i
+        else:
+            raise Exception('Cannot add second instance of same device type')
+
+    def add_device_type(self, device_module, device_type):
+        i = self._add_device_type_instance(device_module, device_type)
+        self.device_type_table.insert({'id': str(i), 'device_module': device_module, 'device_type': device_type})
 
     def get_device_type(self, device_type_name):
         for dt in self.device_types:
@@ -32,7 +56,7 @@ class Gateway:
         return None
 
     def __del__(self):
-        if not(self.serial_port is None):
+        if not (self.serial_port is None):
             logging.debug('Closing COM port: ' + self.serial_port)
             self.serial_port.close()
 
@@ -79,11 +103,11 @@ class Gateway:
             except Exception as e:
                 logging.debug('Invalid message')
 
-    def load(self, filename):
-        self.filename = filename
-        with open(self.filename, 'rb') as f:
-            self.device_types = pickle.load(file=f)
-
-    def save(self, filename):
-        with open(filename, 'wb') as f:
-            pickle.dump(self.device_types, file=f)
+    # def load(self, filename):
+    #     self.filename = filename
+    #     with open(self.filename, 'rb') as f:
+    #         self.device_types = pickle.load(file=f)
+    #
+    # def save(self, filename):
+    #     with open(filename, 'wb') as f:
+    #         pickle.dump(self.device_types, file=f)
