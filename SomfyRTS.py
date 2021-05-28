@@ -47,7 +47,7 @@ class SomfyRemoteInstance(DeviceInstance):
         self.code = code
         self.remote = remote
         self.last_button = BlindButtons.none
-        DeviceInstance.__init__(self, str(remote), ['up', 'down', 'stop', 'prog'])
+        DeviceInstance.__init__(self, str(remote))
 
     def __preamble(self):
         preamble = []
@@ -94,7 +94,13 @@ class SomfyRemoteType(DeviceType):
     pulse_time = 64  # 64 * 10us = 640 us
 
     def __init__(self):
-        DeviceType.__init__(self, "SomfyRTS")
+        DeviceType.__init__(self, "SomfyRTS", ['up', 'down', 'stop', 'prog'])
+
+    def new_instance(self, parameters: {}):
+        code = int(parameters['code'])
+        remote = int(parameters['remote'])
+        instance = SomfyRemoteInstance(code, remote)
+        self.add_instance(instance)
 
     def parse(self, timestamp, pulses):
         if 8704 * 0.85 <= sum(pulses) <= 8704 * 1.15:

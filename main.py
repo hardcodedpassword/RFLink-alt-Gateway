@@ -1,9 +1,6 @@
 from Gateway import Gateway
-from Device import UnknownDeviceType
-from SomfyRTS import SomfyRemoteType, SomfyRemoteInstance
-from RA20RF import RA20RFType
 import logging
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import threading
 import argparse
 import time
@@ -25,10 +22,7 @@ def command(device_type, device_id, command):
         dt = gateway.get_device_type(device_type)
         if dt is None:
             raise Exception('no such device type')
-        di = dt.get_instance(device_id)
-        if di is None:
-            raise Exception('no such device instance')
-        pulses = di.execute_command(command)
+        pulses = dt.execute_command(command, device_id, command)
         gateway.send(pulses)
         return jsonify(result=True, error='')
     except Exception as e:
@@ -67,6 +61,17 @@ def add_device_types(device_module, device_type):
         logging.error('Adding device type failed' + str(e))
         return jsonify(result=False, error=str(e))
 
+@app.route('/add_device/<device_type>', methods=['GET'])
+def add_device_instances(device_type):
+    try:
+        dt = gateway.get_device_type(device_type)
+        if dt is None:
+            raise Exception('no such device type')
+        dt.new_instance(request.args)
+        return jsonify(result=True, error='')
+    except Exception as e:
+        logging.error('adding device instance failed' + str(e))
+        return jsonify(result=False, error=str(e))
 
 @app.route('/device_instances/<device_type>', methods=['GET'])
 def get_device_instances(device_type):
@@ -97,16 +102,13 @@ def get_device_state(device_type, device_id):
 
 
 # todo: move the list of commands to the device_type
-@app.route('/device_commands/<device_type>/<device_id>', methods=['GET'])
-def get_device_commands(device_type, device_id):
+@app.route('/device_commands/<device_type>', methods=['GET'])
+def get_device_commands(device_type):
     try:
         dt = gateway.get_device_type(device_type)
         if dt is None:
             raise Exception('no such device type')
-        di = dt.get_instance(device_id)
-        if di is None:
-            raise Exception('no such device instance')
-        return jsonify(result=True, error='', state=di.get_commands())
+        return jsonify(result=True, error='', state=dt.get_commands())
     except Exception as e:
         logging.error('getting device commands failed' + str(e))
         return jsonify(result=False, error=str(e))

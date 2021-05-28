@@ -18,7 +18,7 @@ import logging
 class RA20RFInstance(DeviceInstance):
     def __init__(self, device_id: int):
         self.device_id = [device_id >> 16 & 0xff, device_id >> 8 & 0xff, device_id >> 0 & 0xff]
-        DeviceInstance.__init__(self, str(device_id), ['alarm'])
+        DeviceInstance.__init__(self, str(device_id))
 
     def handle(self):
         logging.info("RA20RF: ALARM device id: {id}".format(id=self.device_id))
@@ -38,7 +38,12 @@ class RA20RFType(DeviceType):
     bit_encoding = {'0': [1, 2], '1': [1, 3]}
 
     def __init__(self):
-        DeviceType.__init__(self, "RA20RF")
+        DeviceType.__init__(self, "RA20RF", ['alarm'])
+
+    def new_instance(self, parameters: {}):
+        device_id = int(parameters['device_id'])
+        instance = RA20RFInstance(device_id)
+        self.add_instance(instance)
 
     def parse(self, timestamp, pulses):
         if len(pulses) == 52:
@@ -56,3 +61,4 @@ class RA20RFType(DeviceType):
                     logging.info("RA20RF: device id:{id}".format(id=device_id))
                 return True
         return False
+

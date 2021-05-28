@@ -26,7 +26,7 @@ class Gateway:
         self.device_types = [UnknownDeviceType()]
 
         for dt in self.device_type_table.all():
-            self._add_device_type_instance(device_module=dt.device_module, device_type=dt.device_type)
+            self._add_device_type_instance(device_module=dt['device_module'], device_type=dt['device_type'])
 
         signal.signal(signal.SIGINT, self.__signal_handler)
 
